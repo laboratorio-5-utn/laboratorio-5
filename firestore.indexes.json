@@ -1,0 +1,21 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "averias",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "creadoPor", "order": "ASCENDING" },
+        { "fieldPath": "fechaCreacion", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "averias",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "tecnicoAsignado", "order": "ASCENDING" },
+        { "fieldPath": "fechaAsignacion", "order": "DESCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}

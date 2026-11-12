@@ -1,0 +1,155 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function profileExists(uid) {
+      return exists(/databases/$(database)/documents/usuarios/$(uid));
+    }
+
+    function roleIs(role) {
+      return signedIn() && profileExists(request.auth.uid)
+        && get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.rol == role;
+    }
+
+    function isAdmin() {
+      return roleIs('admin');
+    }
+
+    function canReadAveria(data) {
+      return isAdmin() || (signedIn() && (
+        data.creadoPor == request.auth.uid ||
+        (roleIs('tecnico') && data.tecnicoAsignado == request.auth.uid)
+      ));
+    }
+
+    match /usuarios/{uid} {
+      allow create: if signedIn() && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['nombre', 'correo', 'rol', 'departamento'])
+        && request.resource.data.keys().hasAll(['nombre', 'correo', 'rol', 'departamento'])
+        && request.resource.data.nombre is string
+        && request.resource.data.correo == request.auth.token.email
+        && request.resource.data.rol in ['usuario', 'tecnico', 'admin']
+        && request.resource.data.departamento in ['TI', 'Ventas', 'Contabilidad', 'Recursos Humanos', 'Operaciones'];
+      allow read: if signedIn() && (request.auth.uid == uid || isAdmin());
+      allow update, delete: if isAdmin();
+    }
+
+    match /averias/{averiaId} {
+      allow create: if signedIn()
+        && request.resource.data.keys().hasOnly([
+          'titulo', 'descripcion', 'tipo', 'departamento', 'creadoPor', 'nombreUsuario',
+          'imagenReporteUrl', 'estado', 'fechaCreacion'
+        ])
+        && request.resource.data.keys().hasAll([
+          'titulo', 'descripcion', 'tipo', 'departamento', 'creadoPor', 'nombreUsuario',
+          'imagenReporteUrl', 'estado', 'fechaCreacion'
+        ])
+        && request.resource.data.creadoPor == request.auth.uid
+        && request.resource.data.estado == 'pendiente'
+        && request.resource.data.tipo in ['hardware', 'software']
+        && request.resource.data.departamento in ['TI', 'Ventas', 'Contabilidad', 'Recursos Humanos', 'Operaciones']
+        && request.resource.data.fechaCreacion == request.time;
+
+      allow read: if canReadAveria(resource.data);
+
+      allow update: if isAdmin()
+        && resource.data.estado == 'pendiente'
+        && request.resource.data.estado == 'asignado'
+        && request.resource.data.tecnicoAsignado is string
+        && get(/databases/$(database)/documents/usuarios/$(request.resource.data.tecnicoAsignado)).data.rol == 'tecnico'
+        && request.resource.data.fechaAsignacion == request.time
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'tecnicoAsignado', 'nombreTecnico', 'fechaAsignacion', 'estado'
+        ])
+        || (signedIn() && roleIs('tecnico')
+          && resource.data.tecnicoAsignado == request.auth.uid
+          && resource.data.estado == 'asignado'
+          && request.resource.data.estado == 'resuelto'
+          && request.resource.data.imagenSolucionUrl is string
+          && request.resource.data.fechaResolucion == request.time
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'imagenSolucionUrl', 'fechaResolucion', 'estado'
+          ]))
+        || (signedIn() && resource.data.creadoPor == request.auth.uid
+          && resource.data.estado == 'resuelto'
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'conformidad', 'motivoRechazo', 'estado'
+          ])
+          && ((request.resource.data.estado == 'cerrado'
+              && request.resource.data.conformidad == true
+              && request.resource.data.motivoRechazo == '')
+            || (request.resource.data.estado == 'asignado'
+              && request.resource.data.conformidad == false
+              && request.resource.data.motivoRechazo is string
+              && request.resource.data.motivoRechazo.size() > 0)));
+
+      match /seguimientos/{seguimientoId} {
+        allow read: if canReadAveria(get(/databases/$(database)/documents/averias/$(averiaId)).data);
+        allow create: if roleIs('tecnico')
+          && get(/databases/$(database)/documents/averias/$(averiaId)).data.tecnicoAsignado == request.auth.uid
+          && request.resource.data.keys().hasOnly(['tecnicoId', 'observacion', 'imagenEvidenciaUrl', 'fecha'])
+          && request.resource.data.keys().hasAll(['tecnicoId', 'observacion', 'imagenEvidenciaUrl', 'fecha'])
+          && request.resource.data.tecnicoId == request.auth.uid
+          && request.resource.data.observacion is string
+          && request.resource.data.fecha == request.time;
+        allow update, delete: if false;
+      }
+    }
+
+    match /chats/{averiaId} {
+      function isChatParticipant() {
+        return isAdmin() || (roleIs('tecnico') && resource.data.tecnicoId == request.auth.uid);
+      }
+
+      allow read: if isChatParticipant();
+      allow create: if roleIs('tecnico')
+        && request.resource.data.keys().hasOnly([
+          'averiaId', 'averiaTitulo', 'tecnicoId', 'nombreTecnico', 'ultimoMensaje', 'fechaActualizacion'
+        ])
+        && request.resource.data.keys().hasAll([
+          'averiaId', 'averiaTitulo', 'tecnicoId', 'nombreTecnico', 'ultimoMensaje', 'fechaActualizacion'
+        ])
+        && request.resource.data.averiaId == averiaId
+        && request.resource.data.tecnicoId == request.auth.uid
+        && request.resource.data.fechaActualizacion == request.time
+        && get(/databases/$(database)/documents/averias/$(averiaId)).data.tecnicoAsignado == request.auth.uid;
+      allow update: if isChatParticipant()
+        && request.resource.data.averiaId == averiaId
+        && request.resource.data.tecnicoId == resource.data.tecnicoId
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'averiaTitulo', 'tecnicoId', 'nombreTecnico', 'ultimoMensaje', 'fechaActualizacion'
+        ]);
+      allow delete: if false;
+
+      match /mensajes/{mensajeId} {
+        function parentChat() {
+          return get(/databases/$(database)/documents/chats/$(averiaId)).data;
+        }
+
+        function chatMember() {
+          return isAdmin() || (roleIs('tecnico') && parentChat().tecnicoId == request.auth.uid);
+        }
+
+        allow read: if chatMember();
+        allow create: if chatMember()
+          && request.resource.data.keys().hasOnly(['remitenteId', 'rolRemitente', 'texto', 'fecha'])
+          && request.resource.data.keys().hasAll(['remitenteId', 'rolRemitente', 'texto', 'fecha'])
+          && request.resource.data.remitenteId == request.auth.uid
+          && request.resource.data.rolRemitente == get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.rol
+          && request.resource.data.rolRemitente in ['admin', 'tecnico']
+          && request.resource.data.texto is string
+          && request.resource.data.texto.size() > 0
+          && request.resource.data.texto.size() <= 2000
+          && request.resource.data.fecha == request.time;
+        allow update, delete: if false;
+      }
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

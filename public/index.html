@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#193e37"><title>Help Desk TI | Acceso</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="./css/styles.css">
+</head>
+<body>
+  <main class="auth-page">
+    <aside class="auth-aside">
+      <a class="brand" href="./index.html"><span class="brand-mark">+</span> Help Desk TI</a>
+      <div class="auth-copy"><div class="eyebrow" style="color:#a7d8bd">Mesa de ayuda tecnológica</div><h1>Las incidencias, bajo control.</h1><p>Reporta problemas, sigue su atención y mantén la comunicación con el equipo de soporte desde un solo lugar.</p></div>
+      <div class="auth-meta">Sistema de Reportes de Averías e Incidencias</div>
+    </aside>
+    <section class="auth-main">
+      <div class="auth-card">
+        <div class="eyebrow">Portal de soporte</div><h2>Bienvenido</h2><p>Ingresa o crea una cuenta para continuar.</p>
+        <div id="global-alert" aria-live="polite"></div>
+        <div class="auth-tabs"><button class="active" type="button" data-auth-mode="login">Iniciar sesión</button><button type="button" data-auth-mode="register">Crear cuenta</button></div>
+        <form id="login-form">
+          <div class="field"><label for="login-email">Correo electrónico</label><input id="login-email" name="email" type="email" autocomplete="email" required></div>
+          <div class="field"><label for="login-password">Contraseña</label><input id="login-password" name="password" type="password" autocomplete="current-password" required minlength="6"></div>
+          <button class="btn btn-primary btn-block" type="submit">Ingresar</button>
+        </form>
+        <form id="register-form" hidden>
+          <div class="field"><label for="register-name">Nombre completo</label><input id="register-name" name="nombre" required maxlength="100"></div>
+          <div class="field"><label for="register-email">Correo electrónico</label><input id="register-email" name="correo" type="email" autocomplete="email" required></div>
+          <div class="field"><label for="register-password">Contraseña</label><input id="register-password" name="password" type="password" autocomplete="new-password" required minlength="6"></div>
+          <div class="field"><label for="register-role">Rol de laboratorio</label><select id="register-role" name="rol" required><option value="usuario">Usuario</option><option value="tecnico">Técnico</option><option value="admin">Administrador</option></select><span class="hint">En producción, el rol debe asignarlo un administrador.</span></div>
+          <div class="field"><label for="register-dept">Departamento</label><select id="register-dept" name="departamento" required><option value="TI">TI</option><option>Ventas</option><option>Contabilidad</option><option>Recursos Humanos</option><option>Operaciones</option></select></div>
+          <button class="btn btn-primary btn-block" type="submit">Crear cuenta</button>
+        </form>
+      </div>
+    </section>
+  </main>
+  <script type="module" src="./js/auth.js"></script>
+</body>
+</html>
